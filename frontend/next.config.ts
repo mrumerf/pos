@@ -1,0 +1,53 @@
+import type { NextConfig } from 'next';
+import path from 'node:path';
+/**
+ * NEXT_BUILD_MODE=desktop  →  static export for Electron (FloDesktop)
+ * NEXT_BUILD_MODE unset    →  standard Next.js server mode (FloPOS cloud)
+ */
+const isDesktop = process.env.NEXT_BUILD_MODE === 'desktop';
+
+const nextConfig: NextConfig = {
+  // Static export: required for Electron — served via embedded Express,
+  // not file:// so no CORS/routing issues.
+  output: isDesktop ? 'export' : undefined,
+
+  // Allow local dev origins to bypass CORS for Electron (FloDesktop) and mobile (FloPOS) builds.
+  allowedDevOrigins: ['192.168.18.99'],
+
+  // rewrite destination
+  async rewrites() {
+    return [
+          {
+           source: '/api/:path*',
+          destination: 'http://localhost:3001/api/:path*',
+          },
+        ]
+  },
+
+
+  // Trailing slashes make static paths predictable: /pos → /pos/index.html
+  trailingSlash: isDesktop,
+
+  // Release builds with PostHog credentials emit browser maps for scripts/posthog-sourcemaps.cjs,
+  // which uploads and then deletes them; other builds ship no maps.
+  productionBrowserSourceMaps:
+    isDesktop &&
+    Boolean(process.env.POSTHOG_CLI_API_KEY?.trim() && process.env.POSTHOG_CLI_PROJECT_ID?.trim()),
+
+  // next/image optimisation requires a running server; disable for static export.
+  images: {
+    unoptimized: isDesktop,
+  },
+
+  // Silence the "multiple lockfiles / inferred workspace root" warning.
+  // Allow imports from /main (countries derivation shared with backend) via alias;
+  // root must encompass both frontend/ and main/, so it points at the repo root.
+  turbopack: {
+    root: path.resolve(process.cwd(), '..'),
+    resolveAlias: {
+      '@countries': '../main/countries.ts',
+    },
+  },
+};
+
+export default nextConfig;
