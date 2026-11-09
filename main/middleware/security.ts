@@ -497,7 +497,10 @@ export const corsOptions = {
       const parsedOrigin = new URL(origin);
       const hostname = parsedOrigin.hostname;
 
-      if (hostname === 'localhost' || hostname.endsWith('.local') || isAllowedPrivateIp(hostname)) {
+      //allowed origin from .env
+      const allowedDevOrigins = process.env.NEXT_ALLOWED_DEV_ORIGINS
+
+      if (hostname === 'localhost' || hostname.endsWith('.local') || isAllowedPrivateIp(hostname) || (allowedDevOrigins && allowedDevOrigins.split(',').includes(hostname))) {
         return callback(null, true);
       }
 
